@@ -1,0 +1,20 @@
+<!--
+  A Windows program that replays Core Keeper's save steps and reports whether
+  each file exists, asked several ways. Built to compare Wine under CrossOver
+  (macOS) with Wine or Proton on Linux.
+  Build: dotnet publish tools/WineFileCheck (makes one self-contained .exe, so
+  the bottle needs no .NET installed)
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+</Project>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using HarmonyLib;
 using Pug.Platform;
 using PugMod;
@@ -40,6 +41,12 @@ public class CrossOverSaveFix : IMod
 		}
 
 		RemoveOwnLoaderCopy();
+
+		if (StandaloneFilesystemWritePatch.Diagnostics)
+		{
+			StandaloneFilesystemWritePatch.Probe("init", Path.Combine(Application.persistentDataPath, "never.pugtmp"));
+			StandaloneFilesystemWritePatch.Probe("init", Path.Combine(Path.GetTempPath(), "never.pugtmp"));
+		}
 	}
 
 	// The mod loader copies this mod's scripts to a temp folder and compiles them
@@ -101,8 +108,9 @@ public static class StandaloneFilesystemWritePatch
 
 	// Set to true to log the state of <file>, .pugbackup and .pugtmp before and after
 	// every write. This is how the File.Exists problem (see ReallyExists) was found.
-	static readonly bool Diagnostics = false;
+	public static readonly bool Diagnostics = false;
 	static int calls;
+	static int probes;
 
 	// The game's Write deletes <file>.pugbackup if File.Exists says it is there,
 	// writes <file>.pugtmp, then calls File.Replace(tmp, file, backup) if File.Exists
@@ -121,6 +129,11 @@ public static class StandaloneFilesystemWritePatch
 			if (Diagnostics)
 			{
 				Debug.LogWarning($"[CrossOverSaveFix] #{__state} before {path}: {Describe(full)}");
+				if (__state <= 10)
+				{
+					Probe($"write #{__state}", full + ".pugtmp");
+					Probe($"write #{__state}", Path.Combine(Path.GetTempPath(), "never.pugtmp"));
+				}
 			}
 			EnsureExists(full);
 			EnsureExists(full + ".pugbackup");
@@ -163,10 +176,63 @@ public static class StandaloneFilesystemWritePatch
 		return $"file={One(full)} backup={One(full + ".pugbackup")} tmp={One(full + ".pugtmp")}";
 	}
 
-	// Under CrossOver, File.Exists reported .pugtmp and .pugbackup files in the save
-	// folder as present (0 bytes) when they were not on disk. A made-up name in the
-	// temp folder was reported correctly, so it is not every path. Listing the folder
-	// gives the real answer.
+	// Asks about a file that should not exist, four ways, and logs the answers with
+	// the thread that asked. Outside the game, Wine answers "not found" (error 2)
+	// every time; inside it, File.Exists said yes. This narrows down where the
+	// answer goes wrong:
+	//   direct  GetFileAttributesExW, error saved by the runtime (SetLastError)
+	//   raw     the same call, then GetLastError called by hand
+	//   exists  File.Exists
+	//   listed  ReallyExists
+	public static void Probe(string where, string file)
+	{
+		if (System.Threading.Interlocked.Increment(ref probes) > 30)
+		{
+			return;
+		}
+		try
+		{
+			var direct = Native.GetFileAttributesExW(file, 0, out var data);
+			var directError = Marshal.GetLastWin32Error();
+			var raw = Native.GetFileAttributesExNoSave(file, 0, out var rawData);
+			var rawError = Native.GetLastError();
+			var exists = File.Exists(file);
+			var listed = ReallyExists(file);
+			Debug.LogWarning($"[CrossOverSaveFix] probe {where} thread={System.Threading.Thread.CurrentThread.ManagedThreadId}/" +
+				$"{Native.GetCurrentThreadId()} {file}: direct={(direct ? "found" : "missing")} error={directError} " +
+				$"raw={(raw ? "found" : "missing")} error={rawError} exists={exists} listed={listed}");
+		}
+		catch (Exception e)
+		{
+			Debug.LogWarning($"[CrossOverSaveFix] probe {where} {file} failed: {e.GetType().Name}: {e.Message}");
+		}
+	}
+
+	static class Native
+	{
+		[StructLayout(LayoutKind.Sequential, Pack = 4)]
+		public struct FileAttributeData
+		{
+			public uint Attributes;
+			public ulong Created, Accessed, Written;
+			public uint SizeHigh, SizeLow;
+		}
+
+		[DllImport("kernel32", CharSet = CharSet.Unicode, SetLastError = true)]
+		public static extern bool GetFileAttributesExW(string name, int level, out FileAttributeData data);
+		[DllImport("kernel32", CharSet = CharSet.Unicode, EntryPoint = "GetFileAttributesExW")]
+		public static extern bool GetFileAttributesExNoSave(string name, int level, out FileAttributeData data);
+		[DllImport("kernel32")]
+		public static extern int GetLastError();
+		[DllImport("kernel32")]
+		public static extern int GetCurrentThreadId();
+	}
+
+	// Under CrossOver, File.Exists reported missing .pugtmp and .pugbackup files as
+	// present (0 bytes). Unity's Mono reads the Windows error code from gs:[0x68],
+	// which on the Mac does not hold it (0 on the save thread), and File.Exists takes
+	// error 0 to mean the file is there. See README "What goes wrong under CrossOver".
+	// Listing the folder needs no error code, so it gives the real answer.
 	public static bool ReallyExists(string file)
 	{
 		var dir = Path.GetDirectoryName(file);

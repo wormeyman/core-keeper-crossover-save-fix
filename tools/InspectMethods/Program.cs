@@ -41,6 +41,17 @@ foreach (var typeHandle in md.TypeDefinitions)
         var isStatic = (method.Attributes & System.Reflection.MethodAttributes.Static) != 0 ? "static " : "";
         var access = (method.Attributes & System.Reflection.MethodAttributes.MemberAccessMask).ToString().ToLowerInvariant();
         Console.WriteLine($"  {access} {isStatic}{sig.ReturnType} {md.GetString(method.Name)}({string.Join(", ", parameters)})");
+        // Methods with no IL body: say where the code really lives.
+        if ((method.Attributes & System.Reflection.MethodAttributes.PinvokeImpl) != 0)
+        {
+            var import = method.GetImport();
+            var module = md.GetString(md.GetModuleReference(import.Module).Name);
+            Console.WriteLine($"      pinvoke {module}!{md.GetString(import.Name)} ({import.Attributes})");
+        }
+        else if ((method.ImplAttributes & System.Reflection.MethodImplAttributes.InternalCall) != 0)
+        {
+            Console.WriteLine("      internal call (implemented inside the runtime)");
+        }
         if (args.Length == 3 && md.GetString(method.Name) == args[2] && method.RelativeVirtualAddress != 0)
         {
             foreach (var line in DumpCallsAndStrings(pe, md, method, provider))

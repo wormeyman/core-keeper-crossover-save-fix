@@ -77,7 +77,7 @@ The mod uses `System.IO` (file reading and writing) and Harmony (a library that 
 
 ## What is going on
 
-These findings come from reading the game's code with `tools/InspectMethods`, plus logging inside the game.
+These findings come from reading the game's code with `tools/InspectMethods`, logging inside the game, and testing outside it with `tools/WineFileCheck`.
 
 ### How the game saves a file
 
@@ -90,21 +90,33 @@ Every save goes through `Pug.Platform.StandaloneFilesystem.Write(name, path, dat
 
 ### What goes wrong under CrossOver
 
-With the mod logging before and after each write, `File.Exists` reported `.pugtmp` and `.pugbackup` files in the save folder as present, at 0 bytes, when they were not on disk. Listing the folder showed they were missing. A made-up file name in the temp folder was reported correctly, so not every path is affected.
+In short: the game reads Windows error codes from the wrong place, so it sees the wrong error code, and that makes `File.Exists` say yes for missing files.
 
-Our best explanation is that these false answers send the game down the wrong branch in steps 1 and 3. Wine (the Windows layer CrossOver is built on) then fails the rename or replace, but returns error code 0. That is where `Write failed: Success` comes from.
+When a Windows call fails, it leaves an error code for the program to read, such as 2 for "file not found". Programs normally read it with `GetLastError`. The game runs on Unity's version of Mono (the .NET runtime inside Unity), and Mono reads the code a faster way. It takes it straight from a fixed spot in the thread's memory, at offset `0x68` from the `gs` register (`emit_get_last_error` in [Unity's Mono source](https://github.com/Unity-Technologies/mono/blob/unity-main/mono/mini/mini-amd64.c)). On Windows, and in Wine on Linux, that spot holds the real error code. In CrossOver on the Mac, it does not.
 
-What we saw lines up with that:
+What we measured:
 
-- Saves only worked when both `<file>` and `<file>.pugbackup` really existed before the write.
-- A missing file failed with no path in the message (the `File.Move` branch).
-- A file whose `.pugbackup` was missing failed with the `.pugbackup` path in the message (the `File.Replace` branch).
+- **Inside the game**, with the mod's diagnostics on: after Windows failed to find a file, `GetLastError` said 2, but the error code Mono kept was 0 on the thread that saves. On the main thread it was a random large number. Wine itself set the right code every time.
+- **Outside the game**, `tools/WineFileCheck` reads the error code the same way Mono does. In CrossOver 26.3 (Wine 11.0) it got 0 or a random number, never the real 2. Under Wine 11.19 on Linux, and under Proton (Wine 11.0) on Linux, it got 2 every time.
+- **Plain Windows calls work.** The same tool asked about files in several ways, in a fresh bottle and in the game's own bottle, with spaces and mixed slashes in the paths, and in the real save folder. Every answer was right. Only the error code read through `gs` is wrong.
+
+How a wrong error code turns into lost saves (from the game's code):
+
+- `File.Exists` asks Windows for the file's details. When that fails, it checks the error code. "Not found" means no. An error code of 0 looks like success, so `File.Exists` says yes, with a size of 0 bytes. That sends the game down the wrong branch in steps 1 and 3.
+- The wrong branch then fails. On the save thread every failure reports error code 0, which Wine's message text calls "Success". That is where `Write failed: Success` comes from.
+- The random number on the main thread explains the strange `Unknown error (0xa30700)` in the next section.
+
+This matches what we saw before we knew the cause. Saves only worked when both `<file>` and `<file>.pugbackup` really existed, because then no call fails, so no error code is read. A made-up file name was reported correctly from the main thread only because its random number happened not to be 0.
 
 That is why the mod checks for files by listing the folder instead of asking `File.Exists`.
 
+### Linux and Proton
+
+Core Keeper has a native Linux build, which Linux players and the Steam Deck use, so this bug does not affect them. People who run the Windows build through Proton should not have it either: in our test, Proton put the real error code where Mono reads it.
+
 ### The mod loader's temp copy
 
-The game copies each mod's scripts to `AppData/Local/Temp/Pugstorm/Core Keeper/ModLoader/<mod>` and compiles them there. On the next launch, it deletes that copy first. Under CrossOver, that delete failed with `IOException: Unknown error (0xa30700)`. The game then skipped the mod. So the mod deletes its own temp copy once it has loaded, and the next launch starts clean.
+The game copies each mod's scripts to `AppData/Local/Temp/Pugstorm/Core Keeper/ModLoader/<mod>` and compiles them there. On the next launch, it deletes that copy first. Under CrossOver, that delete failed with `IOException: Unknown error (0xa30700)`, most likely the same wrong error code problem as above. The game then skipped the mod. So the mod deletes its own temp copy once it has loaded, and the next launch starts clean.
 
 ### How Steam Cloud sync behaves
 
@@ -140,6 +152,15 @@ These need the .NET SDK (`dotnet`), version 10 or later, and a bottle with Core 
   ```fish
   dotnet run --project tools/InspectMethods -- "$game/CoreKeeper_Data/Managed/Pug.Other.dll" Pug.Platform.StandaloneFilesystem Write
   ```
+
+  For a method that calls into Windows, it shows which DLL function it calls.
+- **`tools/WineFileCheck`** is a small Windows program that repeats the game's save steps in an empty folder. After each step it asks several ways whether each file exists, and it reads the error code the way Unity's Mono does. It does not need the game. Build it with `dotnet publish tools/WineFileCheck` (one self-contained `.exe`, so the bottle needs no .NET), copy the `.exe` into a bottle, and run it there with a new folder:
+
+  ```fish
+  /Applications/CrossOver.app/Contents/SharedSupport/CrossOver/bin/wine --bottle <bottle> --cx-app 'C:\WineFileCheck.exe' 'C:\wfc-test'
+  ```
+
+  Lines marked `MISMATCH` or `FAILED` show a problem. `--probe <path>...` only asks about the paths you give, and changes nothing.
 
 ## Background
 
