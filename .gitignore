@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+*.log
+
+# Save-file backups: binary game data, kept on disk only
+backups/
+bin/
+obj/

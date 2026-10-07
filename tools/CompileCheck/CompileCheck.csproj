@@ -1,0 +1,25 @@
+<!--
+  Compiles the mod's scripts against the game's own DLLs to catch errors before
+  installing. The game compiles the mod itself at load; this is only a check.
+  Usage: dotnet build -p:GameManaged="<path to CoreKeeper_Data/Managed>"
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <OutputType>Library</OutputType>
+    <LangVersion>9.0</LangVersion>
+    <NoStdLib>true</NoStdLib>
+    <DisableImplicitFrameworkReferences>true</DisableImplicitFrameworkReferences>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GameManaged Condition="'$(GameManaged)' == ''">$(HOME)/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/Core Keeper/CoreKeeper_Data/Managed</GameManaged>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../mod/CrossOverSaveFix/Scripts/*.cs" />
+    <Reference Include="$(GameManaged)/netstandard.dll" Private="false" />
+    <Reference Include="$(GameManaged)/mscorlib.dll" Private="false" />
+    <Reference Include="$(GameManaged)/0Harmony.dll" Private="false" />
+    <Reference Include="$(GameManaged)/UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="$(GameManaged)/Pug.Other.dll" Private="false" />
+    <Reference Include="$(GameManaged)/PugMod.SDK.Runtime.dll" Private="false" />
+  </ItemGroup>
+</Project>

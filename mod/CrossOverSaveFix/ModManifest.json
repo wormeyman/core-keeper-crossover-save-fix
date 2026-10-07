@@ -1,0 +1,17 @@
+{
+    "guid": "513b30c3bfd34281bb8161d528f49f75",
+    "name": "CrossOverSaveFix",
+    "displayName": "",
+    "skipSafetyChecks": true,
+    "disableScripts": false,
+    "accessesExtraAssemblies": true,
+    "disableHarmonyPatching": false,
+    "requiredOn": 0,
+    "files": [
+        {
+            "path": "Scripts/CrossOverSaveFix.cs",
+            "guid": "266e75295a674d5492a3035282d2a783"
+        }
+    ],
+    "dependencies": []
+}
