@@ -4,6 +4,8 @@ Core Keeper, run on a Mac through CrossOver, loses new characters and worlds. Th
 
 **Tested on:** CrossOver 26.3, macOS 27.0.1 on Apple silicon, Core Keeper Steam build 25723392 (Unity 6000.0.59f2, mod loader 1.3.0), on one Mac in October 2026. It may behave differently on other versions.
 
+**CrossOver Preview 20261006 does not have this bug.** If you use that version, you do not need the mod, but you do need to set the bottle's graphics to DXVK. See [CrossOver Preview](#crossover-preview) below.
+
 This project is not made by or connected to Pugstorm, Fireshine Games, or CodeWeavers.
 
 ## The problem
@@ -22,6 +24,26 @@ drive_c/users/crossover/AppData/LocalLow/Pugstorm/Core Keeper/Player.log
 ```
 
 The game shows no error on screen for any of this.
+
+## CrossOver Preview
+
+We tested CrossOver Preview 20261006 (build 27.0.0.41069, Wine 11.17) on 2026-10-08. The bottle it made for us ran Windows x86 code through the FEX emulator instead of Apple's Rosetta. The save bug did not happen there, with or without the mod.
+
+**Set the bottle's graphics to DXVK.** With the default setting, the game used wined3d (Wine's own Direct3D) and crashed when we made a new character. With DXVK, the same step worked. The crash was in the graphics code, not the save code. To change it, quit the game, select the bottle in CrossOver, open its settings, and set Graphics to DXVK.
+
+What we measured:
+
+| Test | Result |
+|---|---|
+| `tools/WineFileCheck` | Mono's way of reading the error code got the real 2 on both threads. All checks agreed. |
+| First launch of a fresh bottle that already had Steam Cloud saves, no mod | Loaded. No startup crash. |
+| Saving an old character whose `.pugbackup` was missing, no mod | Saved, and the game made the `.pugbackup` itself. |
+| New character and new world, no mod, DXVK | Both saved, then saved again with backups. 0 `Write failed`, 0 `Failed to upload`. |
+| The same in a second fresh bottle, with the mod, DXVK | Same result. Both hooks attached. |
+
+With the mod on this version, saves still work, but you end up with some empty `.pugbackup` files. The mod makes an empty file before each first save, and that empty file becomes the backup. The game does not upload `.pugbackup` files, so this stays on your Mac. You can remove the mod if you only use CrossOver Preview.
+
+We have not tested a Preview bottle that uses Rosetta instead of FEX, so we do not know yet whether the fix comes from the newer Wine or from FEX. [NotProton](https://github.com/NotProtonNot/NotProton), which runs Windows games from the Mac Steam app, uses its own copy of this Preview, and we have not tested it either.
 
 ## The fix: the CrossOverSaveFix mod
 
@@ -71,7 +93,7 @@ The mod uses `System.IO` (file reading and writing) and Harmony (a library that 
 
 ### Not tested yet
 
-- **The very first launch of a fresh install that already has Steam Cloud saves.** That is the startup crash above. The mod loads before the game's cloud download starts, so it should cover it. If the game still quits at startup, use `restore_from_cloud_cache.py` below.
+- **The very first launch of a fresh install that already has Steam Cloud saves, on CrossOver 26.3.** That is the startup crash above. In CrossOver Preview we saw the mod handle that first cloud download: it made every missing file before the game wrote it, and each file ended up with the real data. But Preview does not have the bug, so that does not prove the mod stops the crash on 26.3. If the game still quits at startup, use `restore_from_cloud_cache.py` below.
 - Multiplayer.
 - Any other CrossOver, macOS or Core Keeper version. A game update could rename the method the mod hooks. If that happens, the mod logs `HOOK NOT ATTACHED`.
 
@@ -97,7 +119,7 @@ When a Windows call fails, it leaves an error code for the program to read, such
 What we measured:
 
 - **Inside the game**, with the mod's diagnostics on: after Windows failed to find a file, `GetLastError` said 2, but the error code Mono kept was 0 on the thread that saves. On the main thread it was a random large number. Wine itself set the right code every time.
-- **Outside the game**, `tools/WineFileCheck` reads the error code the same way Mono does. In CrossOver 26.3 (Wine 11.0) it got 0 or a random number, never the real 2. Under Wine 11.19 on Linux, and under Proton (Wine 11.0) on Linux, it got 2 every time.
+- **Outside the game**, `tools/WineFileCheck` reads the error code the same way Mono does. In CrossOver 26.3 (Wine 11.0) it got 0 or a random number, never the real 2. Under Wine 11.19 on Linux, under Proton (Wine 11.0) on Linux, and in a CrossOver Preview 20261006 bottle (Wine 11.17 with FEX), it got 2 every time.
 - **Plain Windows calls work.** The same tool asked about files in several ways, in a fresh bottle and in the game's own bottle, with spaces and mixed slashes in the paths, and in the real save folder. Every answer was right. Only the error code read through `gs` is wrong.
 
 How a wrong error code turns into lost saves (from the game's code):
@@ -161,6 +183,12 @@ These need the .NET SDK (`dotnet`), version 10 or later, and a bottle with Core 
   ```
 
   Lines marked `MISMATCH` or `FAILED` show a problem. `--probe <path>...` only asks about the paths you give, and changes nothing.
+
+  In a CrossOver Preview bottle that uses FEX, the `.exe` hangs at startup with no output. .NET crashes running its own built-in precompiled code, then hangs. Turn that code off, and use the Preview's path:
+
+  ```fish
+  env DOTNET_ReadyToRun=0 "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine" --bottle <bottle> --cx-app 'C:\WineFileCheck.exe' 'C:\wfc-test'
+  ```
 
 ## Background
 
