@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A fix for Core Keeper losing saves under CrossOver on macOS. The main deliverable is a Core Keeper mod (`mod/CrossOverSaveFix/`). The Python scripts are older, outside-the-game workarounds, kept as backups. `README.md` is the user-facing doc and holds the evidence for every claim; keep it in sync when behavior or findings change.
+A fix for Core Keeper losing saves under CrossOver on macOS. The main deliverable is a Core Keeper mod (`mod/CrossOverSaveFix/`). The Python scripts are older, outside-the-game workarounds, kept as backups. `README.md` is the user-facing doc and holds the evidence for every claim; keep it in sync when behavior or findings change. `docs/mods.md` holds notes on other people's mods (blueprints, tile grid, food) and other game findings (grid sizes, startup logos); add new mod research there.
 
 ## Commands
 
@@ -15,7 +15,9 @@ dotnet run --project tools/InspectMethods -- <dll> <Namespace.Type> [Method]   #
 python3 restore_from_cloud_cache.py --dry-run     # scripts find the Steam ID folder themselves; --bottle/--steam-id override
 ```
 
-There is no single-test runner: `test_fix_missing_saves.py` is one script with named checks. The game DLLs live in the bottle at `.../steamapps/common/Core Keeper/CoreKeeper_Data/Managed/` (`Pug.Other.dll` has the save code, `PugMod.SDK.Runtime.dll` has `IMod`). `CompileCheck` defaults to a bottle named `Steam`; override with `-p:GameManaged=...`.
+There is no single-test runner: `test_fix_missing_saves.py` is one script with named checks. The game DLLs live in the bottle at `.../steamapps/common/Core Keeper/CoreKeeper_Data/Managed/` (`Pug.Other.dll` has the save code and `LoadingScene`, `PugMod.SDK.Runtime.dll` has `IMod`, `Pug.Base.dll` has `Constants`). `CompileCheck` defaults to a bottle named `Steam`; override with `-p:GameManaged=...`. The native Linux game's `Managed` folder works too.
+
+**No `dotnet` on the machine** (e.g. the Linux box): run the tools in `mcr.microsoft.com/dotnet/sdk:10.0`. Mount the repo `:ro` and copy it inside so `bin/`/`obj/` never land in the checkout; the full command is in README "Without .NET: Docker". Docker Desktop only shares `$HOME` by default, so bind mounts from `/tmp` fail with `mounts denied`. `InspectMethods` matches `Namespace.Type` exactly, so a type with no namespace needs a leading dot (`.LoadingScene`), and so do compiler-generated nested types (`.<ShowLogo>d__15`).
 
 ## How the mod works and why
 

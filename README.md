@@ -6,6 +6,8 @@ Core Keeper, run on a Mac through CrossOver, loses new characters and worlds. Th
 
 **CrossOver Preview 20261006 does not have this bug.** If you use that version, you do not need the mod, but you do need to set the bottle's graphics to DXVK. See [CrossOver Preview](#crossover-preview) below.
 
+For other mods we found useful (blueprints, a tile grid, eating all your food at once) and notes on the game's grid sizes and startup logos, see [docs/mods.md](docs/mods.md).
+
 This project is not made by or connected to Pugstorm, Fireshine Games, or CodeWeavers.
 
 ## The problem
@@ -166,16 +168,16 @@ python3 fix_missing_saves.py
 
 ## Tools
 
-These need the .NET SDK (`dotnet`), version 10 or later, and a bottle with Core Keeper installed.
+These need the .NET SDK (`dotnet`), version 10 or later, and a copy of Core Keeper's `CoreKeeper_Data/Managed` folder. That can be the one in a CrossOver bottle or the native Linux install. No .NET? Use Docker instead (see [Without .NET: Docker](#without-net-docker) below).
 
-- **`tools/CompileCheck`** compiles the mod against the game's own DLLs, to catch mistakes before you launch: `dotnet build tools/CompileCheck`. For a bottle not named `Steam`, add `-p:GameManaged="<path to CoreKeeper_Data/Managed>"`.
+- **`tools/CompileCheck`** compiles the mod against the game's own DLLs, to catch mistakes before you launch: `dotnet build tools/CompileCheck`. For a bottle not named `Steam`, or the Linux game, add `--property:GameManaged="<path to CoreKeeper_Data/Managed>"`. It works for any mod's scripts if you change its `Compile Include` line.
 - **`tools/InspectMethods`** prints a type's methods from a game DLL. With a method name, it also lists that method's calls, branches and strings, in order. It only reads the file, and never runs game code:
 
   ```fish
   dotnet run --project tools/InspectMethods -- "$game/CoreKeeper_Data/Managed/Pug.Other.dll" Pug.Platform.StandaloneFilesystem Write
   ```
 
-  For a method that calls into Windows, it shows which DLL function it calls.
+  For a method that calls into Windows, it shows which DLL function it calls. A type with no namespace takes a leading dot, like `.LoadingScene`. A coroutine's hidden class goes the same way, like `'.<ShowLogo>d__15'`.
 - **`tools/WineFileCheck`** is a small Windows program that repeats the game's save steps in an empty folder. After each step it asks several ways whether each file exists, and it reads the error code the way Unity's Mono does. It does not need the game. Build it with `dotnet publish tools/WineFileCheck` (one self-contained `.exe`, so the bottle needs no .NET), copy the `.exe` into a bottle, and run it there with a new folder:
 
   ```fish
@@ -189,6 +191,18 @@ These need the .NET SDK (`dotnet`), version 10 or later, and a bottle with Core 
   ```fish
   env DOTNET_ReadyToRun=0 "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine" --bottle <bottle> --cx-app 'C:\WineFileCheck.exe' 'C:\wfc-test'
   ```
+
+### Without .NET: Docker
+
+Microsoft's .NET SDK image runs both `CompileCheck` and `InspectMethods` with nothing else installed. It comes from Microsoft's own registry, so it needs no Docker Hub login. The repo is mounted read-only and copied inside the container, so the build's `bin/` and `obj/` folders never land in your checkout. Run this from the repo folder (fish shell, Linux game path shown):
+
+```fish
+set game ~/.local/share/Steam/steamapps/common/"Core Keeper"
+docker run --rm --volume "$PWD":/src:ro --volume "$game/CoreKeeper_Data/Managed":/game:ro mcr.microsoft.com/dotnet/sdk:10.0 \
+    bash -c 'cp --recursive /src /work && cd /work && dotnet build tools/CompileCheck --property:GameManaged=/game'
+```
+
+For `InspectMethods`, swap the last line's command for `dotnet run --project tools/InspectMethods -- /game/Pug.Other.dll .LoadingScene`. Tested in October 2026 with the native Linux game on CachyOS: `CompileCheck` built with 0 warnings and 0 errors. Docker Desktop on Linux shares only your home folder with containers by default, so keep the repo and the game there.
 
 ## Background
 
