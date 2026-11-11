@@ -48,6 +48,30 @@ uv run tools/blueprint_report.py "<path to blueprint>.json"
 
 Add `--managed "<path to CoreKeeper_Data/Managed>"` if the game is not in the default Linux Steam folder. It has only been tried on a blueprint with objects and no tiles.
 
+## Automation parts used in farms
+
+Gathered in November 2026 for blueprinting an automated crop farm. Each fact says where it came from: the game's code (read with the tools in this repo), the [Core Keeper wiki](https://corekeeper.atma.gg/en/Automation), or what a player saw in their own farm. Nothing here was tested on purpose in the game yet.
+
+**Facing is stored as the variation number** (code: `DirectionBasedOnVariationCD.GetDirectionFromVariation` in `Pug.ECS.Components.dll`). 0 faces up (+y), 1 right, 2 down, 3 left. Some object types count from 1 instead, with 0 meaning "no direction". The code has a switch for that, and which objects use it is set in the game's data, not its code. BuildingBlueprint saves and pastes the variation, so pasted objects keep their facing. There is still no way to rotate a whole blueprint.
+
+| Part | What it does | Source |
+|---|---|---|
+| Robot Farm Arm | Takes seeds from **behind** and plants them **in front**. Harvests ripe crops in front and puts the harvest behind, onto a belt, the ground or into a chest. Needs power. Does not make seeds. | wiki |
+| Robot Arm | Moves items from behind to in front: off the ground, out of chests and furnaces, into chests and furnaces or onto the ground. Will not plant seeds. Can filter to one item type. | wiki |
+| Sprinkler | Waters tilled soil 2 tiles in every direction (a 5 x 5 square). Needs no power or water. | wiki |
+| Item Collector | Moves every item in a 5 x 5 square in front of it to the tile behind it. Needs power. | wiki |
+| Conveyor Belt | Moves items 1 tile per second. **R** turns one belt tile in place. | wiki |
+| Conveyor Belt Splitter | Splits a stack in half and sends the halves out its front and back. It has 4 facings, but facing only decides which side gets the bigger half first. | wiki |
+| Seed Extractor | Turns crops into seeds. An automated farm needs one to keep replanting, because farm arms don't make seeds. The wiki says to send about half the harvest to it. | wiki |
+
+**Arms are made of "movers"** (code: `MoverCD` in `Pug.Automation.Components.dll` has `start`, `stop`, `moveTime` and `cooldownTime`). One arm can have several movers and cycle between them, so one farm arm may work more than one tile. Which tiles is set by `affectedPositions` on `AutomatedHarvestAndMoverAuthoring` and `AutomatedMoveAndPlanterAuthoring`. Those values are baked into the game's compiled scene data, not its code, so **a farm arm's reach is still unknown.** Watch one arm in the game to find out.
+
+**The wiki's "in front" rule is not the whole story.** In one working farm, two rows of farm arms have the same facing (variation 0). One row has its crops in front and its belt behind. The other has its crops behind and its belt in front. The player reports that both rows plant and harvest. So a farm arm can work crops on its back side too. Which exact tiles it works is still unconfirmed.
+
+**Filters** (code: `ObjectFilteringCD`, `CategoryFilteringCD` and `MoverFilterCD`). A filter is a whitelist or blacklist of one item (with its variation) or of an item category. The wiki says you need the item in your inventory to set one. BuildingBlueprint does not copy filters, so set them again by hand after pasting.
+
+One community guide ([cozy-checklist](https://cozy-checklist.pages.dev/core-keeper/guides/auto-golden-crop-farm), for game version 1.2) found that crop rows longer than 8 tiles leave empty plots, because the seed extractors fall behind. That is one player's observation, not a documented rule.
+
 ## Seeing the grid
 
 The game has no setting to show tile or chunk borders.
