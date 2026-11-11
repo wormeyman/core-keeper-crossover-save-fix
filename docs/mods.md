@@ -66,7 +66,19 @@ Gathered in November 2026 for blueprinting an automated crop farm. Each fact say
 
 **Arms are made of "movers"** (code: `MoverCD` in `Pug.Automation.Components.dll` has `start`, `stop`, `moveTime` and `cooldownTime`). One arm can have several movers and cycle between them, so one farm arm may work more than one tile. Which tiles is set by `affectedPositions` on `AutomatedHarvestAndMoverAuthoring` and `AutomatedMoveAndPlanterAuthoring`. Those values are baked into the game's compiled scene data, not its code, so **a farm arm's reach is still unknown.** Watch one arm in the game to find out.
 
-**The wiki's "in front" rule is not the whole story.** In one working farm, two rows of farm arms have the same facing (variation 0). One row has its crops in front and its belt behind. The other has its crops behind and its belt in front. The player reports that both rows plant and harvest. So a farm arm can work crops on its back side too. Which exact tiles it works is still unconfirmed.
+**The wiki's "in front" rule is not the whole story.** In one working farm, two rows of farm arms have the same facing (variation 0). One row has its crops in front and its belt behind. The other has its crops behind and its belt in front. The player reports that both rows plant and harvest. So a farm arm seems to work both ways: it takes a seed from the belt on one side and plants it in the tilled tile on the other side, then moves the harvest back to the belt. If so, a farm arm's facing doesn't matter. That farm also has 22 farm arms and 22 crop tiles, which suggests each arm works one tile. Both points are inferred from one farm, not read from the game's code.
+
+### A tileable crop farm design
+
+[Simple and Efficient Automatic Crop Farming](https://youtu.be/ULqGPiiX-yM) by Nifegun (April 2026, 17 minutes) is a farm built to be copied: modules sit right next to each other without getting in each other's way. Notes from its transcript:
+
+- **Layout.** A ring of farm arms around the crop tiles: a full row along the top and the bottom, plus one sideways arm at each end of the middle row. Two sprinklers sit inside. A conveyor belt loop runs around the **outside** of the arms and carries seeds past every arm. One crop type per module. The two-sprinkler version has 22 crop tiles. An eight-sprinkler version has 82.
+- **Seed balance.** A chain of 6 belt splitters sends 33 of every 64 crops to a seed extractor, and the rest are kept. Each crop makes 2 seeds, and about 3% of crops come out golden. That gives about 1.0003 new seeds per crop harvested, just over what the farm needs, so seeds don't pile up.
+- **Collection.** An item collector (the "vacuum") and robot arms with filters pull out the kept crops. One arm is filtered to the normal crop, one to the golden crop, and in the larger version one to the seed. Filters are not copied by BuildingBlueprint, so set them on every pasted copy.
+- **Starting it.** Drop one seed per crop tile onto the loop (22 or 82). Put a bit more than that again into the seed extractor as crops, so you end up with a little over twice as many seeds as tiles. One set is in the ground, one is riding the loop, and some are in the extractor.
+- **Power.** A dimly lit machine is still powered.
+- **Building next to a running farm.** Fill your empty inventory slots with one stackable item, and carry one extra of each building piece. Otherwise a slot empties as you build, and you start picking up the crops and seeds that float on the belts. When done, sort your inventory to clear the filler. With BuildingBlueprint this matters too: a paste takes items out of your inventory, which can empty a slot.
+- **Collection point.** Each module collects at its bottom-right corner, so a row of modules can share one belt that runs past all of them.
 
 **Filters** (code: `ObjectFilteringCD`, `CategoryFilteringCD` and `MoverFilterCD`). A filter is a whitelist or blacklist of one item (with its variation) or of an item category. The wiki says you need the item in your inventory to set one. BuildingBlueprint does not copy filters, so set them again by hand after pasting.
 
