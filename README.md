@@ -6,7 +6,7 @@ Core Keeper, run on a Mac through CrossOver, loses new characters and worlds. Th
 
 **CrossOver Preview 20261006 does not have this bug.** If you use that version, you do not need the mod, but you do need to set the bottle's graphics to DXVK. See [CrossOver Preview](#crossover-preview) below.
 
-For other mods we found useful (blueprints, a tile grid, eating all your food at once) and notes on the game's grid sizes and startup logos, see [docs/mods.md](docs/mods.md).
+Other Core Keeper notes now live in their own repo, [corekeeper-wormeyman](https://github.com/wormeyman/corekeeper-wormeyman): other mods we found useful (blueprints, a tile grid, eating all your food at once), grid sizes, startup logos, crafting areas, smelting and ready-made blueprints.
 
 This project is not made by or connected to Pugstorm, Fireshine Games, or CodeWeavers.
 
@@ -192,7 +192,6 @@ These need the .NET SDK (`dotnet`), version 10 or later, and a copy of Core Keep
   env DOTNET_ReadyToRun=0 "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine" --bottle <bottle> --cx-app 'C:\WineFileCheck.exe' 'C:\wfc-test'
   ```
 
-- **`tools/blueprint_report.py`** is not about saves. It reads a blueprint saved by the BuildingBlueprint mod and prints a map of it and the items one paste needs. It needs [uv](https://docs.astral.sh/uv/), not .NET. See [How BuildingBlueprint works](docs/mods.md#how-buildingblueprint-works).
 
 ### Without .NET: Docker
 

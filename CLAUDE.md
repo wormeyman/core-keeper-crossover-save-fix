@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A fix for Core Keeper losing saves under CrossOver on macOS. The main deliverable is a Core Keeper mod (`mod/CrossOverSaveFix/`). The Python scripts are older, outside-the-game workarounds, kept as backups. `README.md` is the user-facing doc and holds the evidence for every claim; keep it in sync when behavior or findings change. `docs/mods.md` holds notes on other people's mods (blueprints, tile grid, food) and other game findings (grid sizes, startup logos); add new mod research there.
+A fix for Core Keeper losing saves under CrossOver on macOS. The main deliverable is a Core Keeper mod (`mod/CrossOverSaveFix/`). The Python scripts are older, outside-the-game workarounds, kept as backups. `README.md` is the user-facing doc and holds the evidence for every claim; keep it in sync when behavior or findings change. Keep this repo to the CrossOver fix. Notes on other mods, blueprints and other game findings live in `wormeyman/corekeeper-wormeyman` (https://github.com/wormeyman/corekeeper-wormeyman); add new research there.
 
 ## Commands
 
