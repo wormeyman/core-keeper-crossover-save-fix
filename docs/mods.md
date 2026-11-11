@@ -13,8 +13,40 @@ Notes on other mods and game settings, gathered while playing (October 2026). Th
 
 The game has no blueprints or copy and paste for builds. Two mods help:
 
-- **BuildingBlueprint** (mod.io) lets you select an area, copy it and paste it somewhere else. It copies placed objects, several tile types (a filter picks which) and paint. It does not yet copy what sits inside containers. It needs CoreLib and elevated access. Your saved builds live in its generated config file, so don't edit that file. Its mod.io page says that copy can't be updated and points to a Steam Workshop copy, which we could not find. Check which copy is current before you install. We could not confirm whether pasting uses materials from your inventory or places things for free.
+- **BuildingBlueprint** ([Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3753254765), also on mod.io) lets you select an area, save it, and paste it somewhere else. It needs CoreLib and elevated access. The mod.io copy is no longer updated; use the Workshop one. More below.
 - **PlacementPlus** (mod.io) places walls, floor, tiles and seeds in lines and grids. It needs CoreLib.
+
+### How BuildingBlueprint works
+
+The Workshop download includes the mod's C# source, so these notes come from reading its code (`BuildingPlaceSystem.cs`, `BuildingSelectSystem.cs`, `SaveHandler.cs`) in November 2026. Most of it has not been tested in the game yet.
+
+**Pasting uses your items.** Each tile and object you paste uses up one matching item from your inventory. If you don't have one, that piece is skipped, and the mod gives no warning. The blueprint panel shows how many of each item you need and how many you carry. Creative mode with God Mode on skips this check.
+
+**Two layers.** Objects (machines, chests, torches, and so on) and tiles are selected separately. Switching layers keeps your selection, so one blueprint can hold both: box the objects, switch to the tile layer, box the tiles, then save.
+
+- An object is only picked up when it fits fully inside the box. Its paint color is copied. What is inside a chest is not.
+- The tile layer has a filter: dug-up ground (tilled soil), water, ground, floor, lit floor, loose flooring, rug, wall, thin wall, fence, rail, bridge, roof hole, slime ground, and Chrysalis. **Every type starts turned off**, so turn on the ones you want first.
+- Click mode adds or removes one thing at a time. Use it to drop natural rocks (stalagmites) that a box picked up by accident.
+
+**What each tile costs.** Tilled soil needs any hoe in your inventory, and the hoe is not used up. Water uses a filled bucket. Other tiles use the matching block or floor item.
+
+**Crops can't be pasted** outside God Mode. A planted crop is its own game object (`CarrockPlant`), not the seed (`CarrockSeed`). The mod looks for the planted object in your inventory, which you can never carry. Copy the tilled soil, then plant the seeds yourself.
+
+**Placing.** Pick a blueprint, choose one of 9 anchor points (corners, edges or center), and left-click. Right-click leaves paste mode. There is no rotate or mirror. The mod does not check whether the spot is free, so paste onto cleared, plain dirt. Tiles go down first (ground and water, then soil and bridges, then floors, then walls), then objects. You have to wait 1 to 3 seconds between pastes, depending on size.
+
+**Destroy** removes everything you have selected. By default only an admin can use it (`DestoryPrivileges` in its `Config.cfg`).
+
+**Keys.** **B** opens the panel. Quick Buff (below) also uses **B** by default, so change one of them under Controls.
+
+**Where blueprints are saved.** Each blueprint is its own JSON file, in `mods/BuildingBlueprint/<folder>/<name>.json` inside the game's per-player data folder (on Linux, `~/.config/unity3d/Pugstorm/Core Keeper/Steam/<STEAM_ID>/`). The game keeps a `.pugbackup` copy of each. The panel's Copy button puts a blueprint's JSON on the clipboard, and Import reads one back, so you can share them. Edit the files only while the game is closed.
+
+**Reading a blueprint outside the game.** The files store objects and tiles as numbers. `tools/blueprint_report.py` prints a map of a blueprint and the items one paste needs, with the names read from the game's `Pug.Base.dll`. It needs [uv](https://docs.astral.sh/uv/):
+
+```fish
+uv run tools/blueprint_report.py "<path to blueprint>.json"
+```
+
+Add `--managed "<path to CoreKeeper_Data/Managed>"` if the game is not in the default Linux Steam folder. It has only been tried on a blueprint with objects and no tiles.
 
 ## Seeing the grid
 
@@ -62,6 +94,7 @@ This repo's mod shows how the game's mod system works: the game compiles a mod's
 
 ## Sources
 
+- [BuildingBlueprint - Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3753254765)
 - [BuildingBlueprint - mod.io](https://mod.io/g/corekeeper/m/buildingblueprint)
 - [PlacementPlus - mod.io](https://mod.io/g/corekeeper/m/placementplus)
 - [SimpleTileGrid - mod.io](https://mod.io/g/corekeeper/m/simpletilegrid)

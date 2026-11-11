@@ -192,6 +192,8 @@ These need the .NET SDK (`dotnet`), version 10 or later, and a copy of Core Keep
   env DOTNET_ReadyToRun=0 "/Applications/CrossOver Preview.app/Contents/SharedSupport/CrossOver/bin/wine" --bottle <bottle> --cx-app 'C:\WineFileCheck.exe' 'C:\wfc-test'
   ```
 
+- **`tools/blueprint_report.py`** is not about saves. It reads a blueprint saved by the BuildingBlueprint mod and prints a map of it and the items one paste needs. It needs [uv](https://docs.astral.sh/uv/), not .NET. See [How BuildingBlueprint works](docs/mods.md#how-buildingblueprint-works).
+
 ### Without .NET: Docker
 
 Microsoft's .NET SDK image runs both `CompileCheck` and `InspectMethods` with nothing else installed. It comes from Microsoft's own registry, so it needs no Docker Hub login. The repo is mounted read-only and copied inside the container, so the build's `bin/` and `obj/` folders never land in your checkout. Run this from the repo folder (fish shell, Linux game path shown):
